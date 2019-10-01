@@ -1,39 +1,101 @@
-#define PIN_SW 5
-#define PIN_DT 18
-#define PIN_CLK 19
+enum {
+  switchPin = 5,
+  encoderDtPin = 18,
+  encoderClkPin = 19,
+  ledRedPin = 21,
+  ledGreenPin = 22,
+  ledBluePin = 23,
+  ledBuiltinPin = LED_BUILTIN,
+
+  switchToggleDebounceMillis = 20,
+  encoderDebounceMillis = 20,
+};
 
 volatile bool changeFlag = false;
+volatile byte encoderPreviousValue = 0;
+volatile byte encoderCount = 0;
+volatile unsigned int encoderOldMillis = 0;
+volatile bool switchToggleValue = false;
+volatile unsigned int switchToggleOldMillis = 0;
 
-void IRAM_ATTR OnSwChange() {
-  changeFlag = true;
+void IRAM_ATTR SwitchChangeIsr() {
+  if (digitalRead(switchPin) == LOW
+      && millis() - switchToggleOldMillis > switchToggleDebounceMillis)
+  {
+    switchToggleValue = !switchToggleValue;
+    switchToggleOldMillis = millis();
+  }
 }
 
-void IRAM_ATTR OnDtChange() {
-  changeFlag = true;
-}
+void IRAM_ATTR EncoderChangeIsr() {
+  if (millis() - encoderOldMillis < encoderDebounceMillis) {
+    return;
+  }
+  
+  byte encoderValue = digitalRead(encoderDtPin) << 1 + digitalRead(encoderClkPin);
+  if (encoderValue == 0b00) {
+    if (encoderPreviousValue == 0b01) {
+      encoderCount++;
+    } else {
+      encoderCount--;
+    }
+  } else if (encoderValue == 0b11) {
+    if (encoderPreviousValue == 0b01) {
+      encoderCount++;
+    } else {
+      encoderCount--;
+    }
+  }
 
-void IRAM_ATTR OnClkChange() {
-  changeFlag = true;
+  encoderPreviousValue = encoderValue;
+  encoderOldMillis = millis();
 }
 
 void setup() {
-  pinMode(PIN_SW, INPUT);
-  pinMode(PIN_DT, INPUT);
-  pinMode(PIN_CLK, INPUT);
+  pinMode(switchPin, INPUT);
+  pinMode(encoderDtPin, INPUT);
+  pinMode(encoderClkPin, INPUT);
+  
+  pinMode(ledRedPin, OUTPUT);
+  pinMode(ledGreenPin, OUTPUT);
+  pinMode(ledBluePin, OUTPUT);
+  pinMode(ledBuiltinPin, OUTPUT);
 
-  attachInterrupt(PIN_SW, OnSwChange, CHANGE);
-  attachInterrupt(PIN_DT, OnDtChange, CHANGE);
-  attachInterrupt(PIN_CLK, OnClkChange, CHANGE);
+  switchToggleOldMillis = millis();
+  encoderOldMillis = millis();
+  encoderPreviousValue = digitalRead(encoderDtPin) << 1 + digitalRead(encoderClkPin);
+
+  attachInterrupt(switchPin, SwitchChangeIsr, CHANGE);
+  attachInterrupt(encoderDtPin, EncoderChangeIsr, CHANGE);
+  attachInterrupt(encoderClkPin, EncoderChangeIsr, CHANGE);
 
   Serial.begin(115200);
 }
 
 void loop() {
-  if(changeFlag) {
-    int value = digitalRead(PIN_SW) << 2;
-    value += digitalRead(PIN_DT) << 1;
-    value += digitalRead(PIN_CLK);
-    Serial.println(value, BIN);
-    changeFlag = false;
+  Serial.print(encoderCount);
+  Serial.print("    ");
+  Serial.println(switchToggleValue);
+
+  digitalWrite(ledBuiltinPin, switchToggleValue);
+
+  switch(encoderCount % 3) {
+    case 0:
+      digitalWrite(ledRedPin, HIGH);
+      digitalWrite(ledGreenPin, LOW);
+      digitalWrite(ledBluePin, LOW);
+      break;
+    case 1:
+      digitalWrite(ledRedPin, LOW);
+      digitalWrite(ledGreenPin, HIGH);
+      digitalWrite(ledBluePin, LOW);
+      break;
+    case 2:
+      digitalWrite(ledRedPin, LOW);
+      digitalWrite(ledGreenPin, LOW);
+      digitalWrite(ledBluePin, HIGH);
+      break;
   }
+
+  delay(10);
 }
