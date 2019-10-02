@@ -8,7 +8,7 @@ enum {
   ledBuiltinPin = LED_BUILTIN,
 
   switchToggleDebounceMillis = 20,
-  encoderDebounceMillis = 20,
+  encoderDebounceMillis = 10,
 };
 
 volatile bool changeFlag = false;
@@ -17,6 +17,11 @@ volatile byte encoderCount = 0;
 volatile unsigned int encoderOldMillis = 0;
 volatile bool switchToggleValue = false;
 volatile unsigned int switchToggleOldMillis = 0;
+
+volatile byte circularQueue[100] = {0};
+volatile byte head = 0; // Index of next empty byte in circular queue
+volatile byte tail = 0; // Index of oldest item in circular queue
+volatile bool error = false;
 
 void IRAM_ATTR SwitchChangeIsr() {
   if (digitalRead(switchPin) == LOW
@@ -28,26 +33,33 @@ void IRAM_ATTR SwitchChangeIsr() {
 }
 
 void IRAM_ATTR EncoderChangeIsr() {
-  if (millis() - encoderOldMillis < encoderDebounceMillis) {
-    return;
+//  if (millis() - encoderOldMillis < encoderDebounceMillis) {
+//    return;
+//  }
+
+  if(head + 1 == tail) {
+    error = true;
   }
   
-  byte encoderValue = digitalRead(encoderDtPin) << 1 + digitalRead(encoderClkPin);
-  if (encoderValue == 0b00) {
-    if (encoderPreviousValue == 0b01) {
-      encoderCount++;
-    } else {
-      encoderCount--;
-    }
-  } else if (encoderValue == 0b11) {
-    if (encoderPreviousValue == 0b01) {
-      encoderCount++;
-    } else {
-      encoderCount--;
-    }
-  }
-
-  encoderPreviousValue = encoderValue;
+  circularQueue[head] = digitalRead(encoderDtPin) << 1 + digitalRead(encoderClkPin);
+  head++;
+  
+//  byte encoderValue = digitalRead(encoderDtPin) << 1 + digitalRead(encoderClkPin);
+//  if (encoderValue == 0b00) {
+//    if (encoderPreviousValue == 0b01) {
+//      encoderCount++;
+//    } else {
+//      encoderCount--;
+//    }
+//  } else if (encoderValue == 0b11) {
+//    if (encoderPreviousValue == 0b01) {
+//      encoderCount++;
+//    } else {
+//      encoderCount--;
+//    }
+//  }
+//
+//  encoderPreviousValue = encoderValue;
   encoderOldMillis = millis();
 }
 
@@ -73,29 +85,37 @@ void setup() {
 }
 
 void loop() {
-  Serial.print(encoderCount);
-  Serial.print("    ");
-  Serial.println(switchToggleValue);
-
-  digitalWrite(ledBuiltinPin, switchToggleValue);
-
-  switch(encoderCount % 3) {
-    case 0:
-      digitalWrite(ledRedPin, HIGH);
-      digitalWrite(ledGreenPin, LOW);
-      digitalWrite(ledBluePin, LOW);
-      break;
-    case 1:
-      digitalWrite(ledRedPin, LOW);
-      digitalWrite(ledGreenPin, HIGH);
-      digitalWrite(ledBluePin, LOW);
-      break;
-    case 2:
-      digitalWrite(ledRedPin, LOW);
-      digitalWrite(ledGreenPin, LOW);
-      digitalWrite(ledBluePin, HIGH);
-      break;
+  if(error) {
+    Serial.println("error");
   }
+
+  while(tail < head) {
+    Serial.println(circularQueue[tail], BIN);
+    tail++;
+  }
+//  Serial.print(encoderCount);
+//  Serial.print("    ");
+//  Serial.println(switchToggleValue);
+//
+//  digitalWrite(ledBuiltinPin, switchToggleValue);
+//
+//  switch(encoderCount % 3) {
+//    case 0:
+//      digitalWrite(ledRedPin, HIGH);
+//      digitalWrite(ledGreenPin, LOW);
+//      digitalWrite(ledBluePin, LOW);
+//      break;
+//    case 1:
+//      digitalWrite(ledRedPin, LOW);
+//      digitalWrite(ledGreenPin, HIGH);
+//      digitalWrite(ledBluePin, LOW);
+//      break;
+//    case 2:
+//      digitalWrite(ledRedPin, LOW);
+//      digitalWrite(ledGreenPin, LOW);
+//      digitalWrite(ledBluePin, HIGH);
+//      break;
+//  }
 
   delay(10);
 }
