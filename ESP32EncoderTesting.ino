@@ -74,5 +74,26 @@ void loop() {
   Serial.print(switchToggleValue);
   Serial.print("  ");
   Serial.println(encoderCount);
+
+  digitalWrite(ledBuiltinPin, switchToggleValue);
+
+  switch(encoderCount % 3) {
+    case 0:
+      digitalWrite(ledRedPin, HIGH);
+      digitalWrite(ledGreenPin, LOW);
+      digitalWrite(ledBluePin, LOW);
+      break;
+    case 1:
+      digitalWrite(ledRedPin, LOW);
+      digitalWrite(ledGreenPin, HIGH);
+      digitalWrite(ledBluePin, LOW);
+      break;
+    case 2:
+      digitalWrite(ledRedPin, LOW);
+      digitalWrite(ledGreenPin, LOW);
+      digitalWrite(ledBluePin, HIGH);
+      break;
+  }
+
   delay(50);
 }
