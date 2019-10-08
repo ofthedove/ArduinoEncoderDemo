@@ -23,4 +23,20 @@ LED Green | D22 | 22
 LED Blue | D23 | 23
 
 ## Software
-ToDo: Description of software operation
+ToDo: High level, encoder in lights out. below should maybe go in interrupt section.
+
+The encoder inputs are read in an interrupt, as they change quite quickly. The interrupt handler needs to be very fast, so rather than processing the encoder values directly they're placed in a queue which is read and processed in the main loop, outside the interrupt context.
+
+### Global Constants
+This section names all of the hardware pins used and sets the button debounce time and encoder queue size. Increasing the button debounce time will make the button less susceptable to bounce but also less responsive, decreasing it will have the opposite effect. The button on my encoder is quite good, so a small value is sufficient.
+
+### Global Variables
+
+
+### Interrupt Service Routines
+
+
+### Setup
+
+
+### Main Loop
